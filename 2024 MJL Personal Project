@@ -1,0 +1,51 @@
+import numpy as np
+import pandas as pd
+from sklearn import svm
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import make_pipeline
+import librosa
+
+# 음성 데이터 전처리
+def preprocess_audio(file_path):
+    y, sr = librosa.load(file_path, sr=16000)
+    y = librosa.util.fix_length(y, sr)
+    mfccs = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13)
+    return mfccs.T  # Transpose for SVM
+
+# 생체 데이터 전처리
+def preprocess_wearable_data(data):
+    data = data.dropna()
+    data = (data - data.mean()) / data.std()
+    return data
+
+# SVM 모델 생성 및 학습
+def create_and_train_svm_model(X_train, y_train):
+    model = make_pipeline(StandardScaler(), svm.SVC(kernel='linear', probability=True))
+    model.fit(X_train, y_train)
+    return model
+
+# 실시간 예측 함수
+def predict_real_time(model, X):
+    return model.predict(X), model.predict_proba(X)
+
+# 실행
+if __name__ == "__main__":
+    # 예제 데이터 로딩 및 전처리 (사용자의 실제 데이터로 대체 필요)
+    audio_mfccs = preprocess_audio('example_audio.wav')  # Reshape for SVM
+    wearable_data = preprocess_wearable_data(pd.DataFrame(np.random.rand(100, 10)))  # Random example data
+
+    # 데이터 레이블 (0: 정상, 1: 이상)
+    y_train = np.array([0] * 50 + [1] * 50)  # Example labels
+
+    # 모델 생성 및 학습
+    audio_svm_model = create_and_train_svm_model(audio_mfccs, y_train[:audio_mfccs.shape[0]])  # Placeholder for example
+    wearable_svm_model = create_and_train_svm_model(wearable_data, y_train)
+
+    # 실시간 예측 예시
+    audio_prediction, audio_prob = predict_real_time(audio_svm_model, audio_mfccs)
+    wearable_prediction, wearable_prob = predict_real_time(wearable_svm_model, wearable_data)
+
+    print("Audio Prediction:", audio_prediction)
+    print("Audio Prediction Probabilities:", audio_prob)
+    print("Wearable Data Prediction:", wearable_prediction)
+    print("Wearable Data Prediction Probabilities:", wearable_prob)
