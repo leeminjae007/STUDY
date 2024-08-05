@@ -1,0 +1,110 @@
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, Dataset
+from torchvision import transforms, models
+import numpy as np
+from PIL import Image
+import os
+
+# Custom Dataset for Food X-ray Images
+class FoodXrayDataset(Dataset):
+    def __init__(self, xray_images, annotations, transform=None):
+        self.xray_images = xray_images
+        self.annotations = annotations
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.xray_images)
+
+    def __getitem__(self, idx):
+        xray_image = Image.open(self.xray_images[idx]).convert('L')  # Convert to grayscale
+        target = self.annotations[idx]
+
+        if self.transform:
+            xray_image = self.transform(xray_image)
+
+        return xray_image, target
+
+# Data Transformations
+data_transform = transforms.Compose([
+    transforms.Resize((640, 640)),
+    transforms.ToTensor(),
+])
+
+# Sample dataset paths and annotations
+xray_images = ['path_to_xray_image1', 'path_to_xray_image2']
+annotations = [{'boxes': [[x1, y1, x2, y2]], 'labels': [1]}, {'boxes': [[x1, y1, x2, y2]], 'labels': [1]}]
+
+dataset = FoodXrayDataset(xray_images, annotations, transform=data_transform)
+dataloader = DataLoader(dataset, batch_size=2, shuffle=True)
+
+# YOLOv5 Backbone with Attention Mechanism
+class YOLOv5WithAttention(nn.Module):
+    def __init__(self, num_classes=1):
+        super(YOLOv5WithAttention, self).__init__()
+        self.backbone = models.resnet50(pretrained=True)
+        self.backbone.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)  # Adjust for single channel
+        self.backbone = nn.Sequential(*list(self.backbone.children())[:-2])
+        self.attention = nn.Sequential(
+            nn.Conv2d(2048, 512, kernel_size=1),
+            nn.BatchNorm2d(512),
+            nn.ReLU(),
+            nn.Conv2d(512, 2048, kernel_size=1),
+            nn.BatchNorm2d(2048),
+            nn.Sigmoid()
+        )
+        self.head = nn.Sequential(
+            nn.Conv2d(2048, 512, kernel_size=1),
+            nn.BatchNorm2d(512),
+            nn.ReLU(),
+            nn.Conv2d(512, num_classes * 5, kernel_size=1)
+        )
+
+    def forward(self, x):
+        x = self.backbone(x)
+        attention = self.attention(x)
+        x = x * attention
+        x = self.head(x)
+        return x
+
+# CIoU Loss Function
+def ciou_loss(pred, target):
+    # Placeholder: Implement the CIoU loss calculation
+    # Convert predictions and targets to correct format
+    # Implement CIoU loss
+    pass
+
+# Training Loop
+def train_model(model, dataloader, criterion, optimizer, num_epochs=25):
+    for epoch in range(num_epochs):
+        model.train()
+        running_loss = 0.0
+        for inputs, targets in dataloader:
+            inputs = inputs.cuda()
+            targets = targets.cuda()
+
+            optimizer.zero_grad()
+
+            outputs = model(inputs)
+            loss = criterion(outputs, targets)
+            loss.backward()
+            optimizer.step()
+
+            running_loss += loss.item() * inputs.size(0)
+
+        epoch_loss = running_loss / len(dataloader.dataset)
+        print(f'Epoch {epoch}/{num_epochs - 1}, Loss: {epoch_loss:.4f}')
+
+    return model
+
+# Initialize Model, Loss Function, and Optimizer
+model = YOLOv5WithAttention(num_classes=1).cuda()
+criterion = ciou_loss
+optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+# Train the Model
+trained_model = train_model(model, dataloader, criterion, optimizer, num_epochs=25)
+
+# Save the Model
+torch.save(trained_model.state_dict(), 'food_xray_detection_model.pth')
