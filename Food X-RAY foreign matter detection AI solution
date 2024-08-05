@@ -7,44 +7,44 @@ import numpy as np
 from PIL import Image
 import os
 
-# Custom Dataset for Food X-ray Images
+# 데이터셋 클래스
 class FoodXrayDataset(Dataset):
     def __init__(self, xray_images, annotations, transform=None):
-        self.xray_images = xray_images
-        self.annotations = annotations
-        self.transform = transform
+        self.xray_images = xray_images  # X-ray 이미지 경로 리스트
+        self.annotations = annotations  # 주석 데이터
+        self.transform = transform  # 이미지 변환 함수
 
     def __len__(self):
-        return len(self.xray_images)
+        return len(self.xray_images)  # 데이터셋의 크기 반환
 
     def __getitem__(self, idx):
-        xray_image = Image.open(self.xray_images[idx]).convert('L')  # Convert to grayscale
-        target = self.annotations[idx]
+        xray_image = Image.open(self.xray_images[idx]).convert('L')  # 이미지 로드 및 그레이스케일 변환
+        target = self.annotations[idx]  # 해당 이미지의 주석
 
         if self.transform:
-            xray_image = self.transform(xray_image)
+            xray_image = self.transform(xray_image)  # 이미지 변환 적용
 
-        return xray_image, target
+        return xray_image, target  # 이미지와 주석 반환
 
-# Data Transformations
+# 데이터 변환 함수 정의
 data_transform = transforms.Compose([
-    transforms.Resize((640, 640)),
-    transforms.ToTensor(),
+    transforms.Resize((640, 640)),  # 이미지 크기 조정
+    transforms.ToTensor(),  # 텐서 변환
 ])
 
-# Sample dataset paths and annotations
+# 샘플 데이터셋 경로와 주석
 xray_images = ['path_to_xray_image1', 'path_to_xray_image2']
 annotations = [{'boxes': [[x1, y1, x2, y2]], 'labels': [1]}, {'boxes': [[x1, y1, x2, y2]], 'labels': [1]}]
 
 dataset = FoodXrayDataset(xray_images, annotations, transform=data_transform)
-dataloader = DataLoader(dataset, batch_size=2, shuffle=True)
+dataloader = DataLoader(dataset, batch_size=2, shuffle=True)  # 데이터 로더 생성
 
-# YOLOv5 Backbone with Attention Mechanism
+# YOLOv5 백본과 어텐션 메커니즘을 가진 모델 정의
 class YOLOv5WithAttention(nn.Module):
     def __init__(self, num_classes=1):
         super(YOLOv5WithAttention, self).__init__()
         self.backbone = models.resnet50(pretrained=True)
-        self.backbone.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)  # Adjust for single channel
+        self.backbone.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)  # 단일 채널 입력에 맞게 수정
         self.backbone = nn.Sequential(*list(self.backbone.children())[:-2])
         self.attention = nn.Sequential(
             nn.Conv2d(2048, 512, kernel_size=1),
@@ -58,24 +58,22 @@ class YOLOv5WithAttention(nn.Module):
             nn.Conv2d(2048, 512, kernel_size=1),
             nn.BatchNorm2d(512),
             nn.ReLU(),
-            nn.Conv2d(512, num_classes * 5, kernel_size=1)
+            nn.Conv2d(512, num_classes * 5, kernel_size=1)  # 클래스 수에 맞게 출력 채널 설정
         )
 
     def forward(self, x):
-        x = self.backbone(x)
-        attention = self.attention(x)
-        x = x * attention
-        x = self.head(x)
+        x = self.backbone(x)  # 백본 네트워크 통과
+        attention = self.attention(x)  # 어텐션 계산
+        x = x * attention  # 어텐션 적용
+        x = self.head(x)  # 헤드 네트워크 통과
         return x
 
-# CIoU Loss Function
+# CIoU 손실 함수 정의
 def ciou_loss(pred, target):
-    # Placeholder: Implement the CIoU loss calculation
-    # Convert predictions and targets to correct format
-    # Implement CIoU loss
+    # 구현 필요: CIoU 손실 계산 로직
     pass
 
-# Training Loop
+# 모델 훈련 루프
 def train_model(model, dataloader, criterion, optimizer, num_epochs=25):
     for epoch in range(num_epochs):
         model.train()
@@ -98,13 +96,13 @@ def train_model(model, dataloader, criterion, optimizer, num_epochs=25):
 
     return model
 
-# Initialize Model, Loss Function, and Optimizer
+# 모델, 손실 함수, 최적화기 초기화
 model = YOLOv5WithAttention(num_classes=1).cuda()
 criterion = ciou_loss
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-# Train the Model
+# 모델 훈련
 trained_model = train_model(model, dataloader, criterion, optimizer, num_epochs=25)
 
-# Save the Model
+# 모델 저장
 torch.save(trained_model.state_dict(), 'food_xray_detection_model.pth')
