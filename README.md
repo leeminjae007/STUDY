@@ -7,3 +7,5 @@
 ### [2022/인천대/인공지능/공부노트](https://github.com/leeminjae007/STUDY/blob/main/2022%20Artificial%20Intelligence%20NoteBook.ipynb)
 
 ### [2024/에이피메타랩스/식품 내 x-ray 이물질 검출 ai 솔루션(재구현)](https://github.com/leeminjae007/STUDY/blob/main/Food%20X-RAY%20foreign%20matter%20detection%20AI%20solution)
+
+### [2024/개인프로젝트/음성인식을 통한 웨어러블 기기의 뇌졸중 예방 및 사전 조치(베이스라인)](https://github.com/leeminjae007/STUDY/blob/main/2024%20MJL%20Personal%20Project)
